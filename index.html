@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lua e Marés</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE everyday: a learning toy, calm and clear, night sky over the sea
+   IDEA an observatory chart of the Earth-Moon system seen from above the North Pole, beside a harbour tide gauge
+   PICTURE the live Earth with its exaggerated ocean bulges, the Moon on its orbit and sunlight from the left; a tide curve below
+   COLOUR deep ocean night #071a2b, sea blue #2f8fd8, moon silver #e9edf2, one warm accent sun gold #ffc94d
+   TYPE Sora 700 display + Inter text
+   LAYOUT laptop: title row, then scene (60%) beside controls and readouts; tide curve full width; phone: title, scene, controls */
+:root{color-scheme:dark;--bg:#071a2b;--bg2:#0c2740;--ink:#eef3f8;--mut:#a9bccd;--sea:#2f8fd8;--sea2:#7cc4ff;--sun:#ffc94d;--moon:#e9edf2;--line:#1f4466}
+*{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:72px}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Inter,system-ui,sans-serif;overflow-x:clip}
+h1,h2,h3{font-family:Sora,Inter,sans-serif;letter-spacing:-.02em;line-height:1.08;margin:0}
+h1{font-size:clamp(30px,4.4vw,48px);text-wrap:balance;max-width:20ch}
+h2{font-size:clamp(24px,3vw,34px);text-wrap:balance;margin-bottom:12px}
+h3{font-size:19px;margin-bottom:6px}
+p{margin:0 0 10px;max-width:68ch}
+.band{padding:clamp(24px,4vw,56px) max(5vw,16px)}
+.wrap{max-width:1240px;margin:0 auto}
+.lede{color:var(--mut);font-size:17px;margin-top:12px}
+.top{display:flex;flex-wrap:wrap;gap:16px 40px;align-items:end;justify-content:space-between;margin-bottom:22px}
+.lab{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:20px;align-items:stretch}
+.fig{position:relative;min-height:420px;border-radius:18px;overflow:hidden;background:radial-gradient(circle at 60% 50%,#0f3354 0,#06121f 75%)}
+.fig>canvas{position:absolute;inset:0;width:100%;height:100%}
+.panel{background:var(--bg2);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:14px}
+.read{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.read div{background:#0a2136;border-radius:12px;padding:10px 12px}
+.read small{display:block;color:var(--mut);font-size:13px}
+.read b{font-family:Sora,sans-serif;font-size:19px;font-weight:600;white-space:nowrap}
+.kind{font-family:Sora,sans-serif;font-size:21px;font-weight:700;padding:12px 14px;border-radius:12px;background:#0a2136;border-left:0}
+.kind span{display:block;font:400 14px/1.4 Inter,sans-serif;color:var(--mut);margin-top:4px}
+label{display:flex;justify-content:space-between;gap:10px;font-size:14px;color:var(--mut)}
+label output{color:var(--ink);font-weight:600;white-space:nowrap}
+input[type=range]{width:100%;height:44px;accent-color:var(--sea2);background:transparent;margin:0}
+.row{display:flex;flex-wrap:wrap;gap:8px}
+button,select{font:600 15px Inter,sans-serif;color:var(--ink);background:#123552;border:1px solid #2a5a85;border-radius:10px;min-height:44px;padding:0 14px;cursor:pointer}
+button:hover,select:hover{background:#18456b}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--sun);outline-offset:2px}
+button[aria-pressed=true]{background:var(--sea);border-color:var(--sea2)}
+.chk{justify-content:flex-start;align-items:center;color:var(--ink);font-size:15px;min-height:44px}
+.chk input{width:20px;height:20px;accent-color:var(--sea2)}
+.curve{margin-top:20px;background:var(--bg2);border:1px solid var(--line);border-radius:18px;padding:16px 18px}
+.curve .fig{min-height:200px;background:none;border-radius:0}
+.curve h3{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px}
+.curve h3 small{font:400 14px Inter,sans-serif;color:var(--mut)}
+svg text{font:13px Inter,sans-serif;fill:var(--mut);paint-order:stroke;stroke:var(--bg2);stroke-width:4px}
+.month{display:grid;grid-template-columns:repeat(30,minmax(0,1fr));gap:3px;align-items:end;height:90px;margin-top:10px}
+.month i{display:block;background:#2a5a85;border-radius:3px 3px 0 0}
+.month i.on{background:var(--sun)}
+.mlab{display:flex;justify-content:space-between;color:var(--mut);font-size:13px;margin-top:6px}
+.steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px;margin-top:18px}
+.steps>div{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:16px}
+.steps svg{width:100%;height:120px;display:block;margin-bottom:10px}
+.alt{background:#0a2236}
+.cities{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;margin-top:18px}
+.bars{display:flex;flex-direction:column;gap:12px;margin-top:10px}
+.bar{display:grid;grid-template-columns:minmax(0,1fr) 5.2em;gap:4px 12px;align-items:center}
+.bar .n{font-weight:600}
+.bar .n small{display:block;font-weight:400;color:var(--mut);font-size:13px}
+.bar .v{text-align:right;font-family:Sora,sans-serif;font-weight:600;white-space:nowrap}
+.bar .t{grid-column:1/-1;height:12px;background:#0a2136;border-radius:6px;overflow:hidden}
+.bar .t i{display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--sea),var(--sea2))}
+.bar.br .t i{background:linear-gradient(90deg,#f2a93b,var(--sun))}
+.note{color:var(--mut);font-size:14px;margin-top:16px}
+.why{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 28px;margin-top:14px}
+footer{color:var(--mut);font-size:14px}
+footer a{color:var(--sea2)}
+@media(max-width:860px){.lab{grid-template-columns:minmax(0,1fr)}.steps{grid-template-columns:minmax(0,1fr)}.fig{min-height:360px}}
+@media(max-width:700px){.cities,.why{grid-template-columns:minmax(0,1fr)}.month{gap:1px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<section class="band">
+<div class="wrap">
+<div class="top">
+<div>
+<h1>Como a Lua puxa os oceanos da Terra</h1>
+<p class="lede">Mova a Lua, avance as horas e veja os dois "bojos" de água seguirem a Lua enquanto a Terra gira por baixo deles. Os bojos estão muito exagerados: no oceano aberto eles têm menos de 1 metro.</p>
+</div>
+</div>
+<div class="lab">
+<div class="fig" id="scene"><canvas id="cv" aria-label="Vista de cima do Polo Norte: Terra com bojos de maré, Lua em órbita e luz do Sol vindo da esquerda" role="img"></canvas></div>
+<div class="panel">
+<div class="kind" id="kind">Maré de sizígia<span></span></div>
+<div class="read">
+<div><small>Fase da Lua</small><b id="phase">Lua nova</b></div>
+<div><small>Agora em "Você"</small><b id="now">Enchendo</b></div>
+<div><small>Próxima maré alta</small><b id="next">em 3 h</b></div>
+<div><small>Amplitude do dia</small><b id="amp">100%</b></div>
+</div>
+<div class="row">
+<button id="play" aria-pressed="false">▶ Animar</button>
+<select id="speed" aria-label="Velocidade">
+<option value="2">2 horas/s</option>
+<option value="6" selected>6 horas/s</option>
+<option value="24">1 dia/s</option>
+</select>
+</div>
+<div>
+<label for="day">Dia do ciclo lunar <output id="dayo">0</output></label>
+<input type="range" id="day" min="0" max="29" step="1" value="0">
+</div>
+<div>
+<label for="hour">Hora do dia em "Você" <output id="houro">12:00</output></label>
+<input type="range" id="hour" min="0" max="23.75" step="0.25" value="9">
+</div>
+<div class="row" id="presets">
+<button data-d="0">Nova</button><button data-d="7.38">Crescente</button><button data-d="14.77">Cheia</button><button data-d="22.15">Minguante</button>
+</div>
+<label class="chk"><input type="checkbox" id="sun" checked> Incluir o efeito do Sol</label>
+<div>
+<label for="dist">Distância da Lua</label>
+<select id="dist" style="width:100%">
+<option value="1">Média (384 mil km)</option>
+<option value="1.18">Perigeu (≈363 mil km): maré ~18% maior</option>
+<option value="0.85">Apogeu (≈405 mil km): maré ~15% menor</option>
+</select>
+</div>
+</div>
+</div>
+<div class="curve">
+<h3>Altura da água em "Você" <small>de 1 dia antes até 2 dias depois · linha dourada = agora</small></h3>
+<div class="fig"><svg id="tc" role="img" aria-label="Curva da maré"></svg></div>
+<h3 style="margin-top:14px">Amplitude ao longo do mês lunar <small>barras mais altas = maré viva</small></h3>
+<div class="month" id="month"></div>
+<div class="mlab"><span>Lua nova</span><span>Crescente</span><span>Cheia</span><span>Minguante</span><span>Nova</span></div>
+</div>
+</div>
+</section>
+
+<section class="band alt">
+<div class="wrap">
+<h2>Três ideias explicam quase tudo</h2>
+<div class="steps">
+<div>
+<svg viewBox="0 0 300 120" aria-hidden="true"><ellipse cx="120" cy="60" rx="62" ry="44" fill="#2f8fd8" opacity=".55"/><circle cx="120" cy="60" r="38" fill="#2b6e46"/><circle cx="270" cy="60" r="16" fill="#e9edf2"/><path d="M182 60h38M54 60H24" stroke="#ffc94d" stroke-width="4" marker-end="url(#ar)"/><defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#ffc94d"/></marker></defs></svg>
+<h3>Dois bojos, não um</h3>
+<p>A gravidade da Lua é mais forte no lado da Terra voltado para ela e mais fraca no lado oposto. A diferença estica o oceano: a água sobe em direção à Lua e também do lado contrário.</p>
+</div>
+<div>
+<svg viewBox="0 0 300 120" aria-hidden="true"><path d="M20 60c18-40 37-40 55 0s37 40 55 0 37-40 55 0 37 40 55 0 37-40 55 0" fill="none" stroke="#7cc4ff" stroke-width="4"/><text x="34" y="18" style="font-size:14px;fill:#eef3f8;stroke:none">alta</text><text x="62" y="112" style="font-size:14px;fill:#eef3f8;stroke:none">baixa</text></svg>
+<h3>Duas marés altas por dia</h3>
+<p>A Terra gira por baixo dos bojos. Como a Lua também avança na órbita, um ciclo completo leva 24 h 50 min, por isso a maré alta chega cerca de 50 minutos mais tarde a cada dia.</p>
+</div>
+<div>
+<svg viewBox="0 0 300 120" aria-hidden="true"><circle cx="28" cy="60" r="20" fill="#ffc94d"/><circle cx="150" cy="60" r="24" fill="#2b6e46"/><circle cx="220" cy="60" r="10" fill="#e9edf2"/><circle cx="150" cy="16" r="10" fill="#e9edf2"/><path d="M60 60h220M150 30v-2" stroke="#a9bccd" stroke-dasharray="4 5"/><text x="232" y="88" style="font-size:13px;fill:#eef3f8;stroke:none">viva</text><text x="166" y="20" style="font-size:13px;fill:#eef3f8;stroke:none">morta</text></svg>
+<h3>O Sol ajuda ou atrapalha</h3>
+<p>O Sol também cria bojos, com cerca de 46% da força dos da Lua. Na Lua nova e cheia eles se somam (maré viva, ou de sizígia). Nos quartos crescente e minguante eles se cruzam (maré morta, ou de quadratura).</p>
+</div>
+</div>
+</div>
+</section>
+
+<section class="band">
+<div class="wrap">
+<h2>Onde a maré varia mais, e onde quase não existe</h2>
+<p>Amplitude é a diferença entre a maré alta e a maré baixa. Valores aproximados para marés de sizígia, na mesma escala de 0 a 17 metros.</p>
+<div class="cities">
+<div><h3>As maiores do mundo</h3><div class="bars" id="big"></div></div>
+<div><h3>As menores</h3><div class="bars" id="small"></div>
+<h3 style="margin-top:26px">E no Brasil?</h3><div class="bars" id="brasil"></div></div>
+</div>
+<div class="why">
+<p><b>Por que a Baía de Fundy?</b> A baía tem forma de funil e um período natural de oscilação de cerca de 13 horas, muito próximo do ciclo de 12 h 25 min da maré. A água entra em ressonância, como uma criança num balanço empurrada no momento certo.</p>
+<p><b>Por que o Mediterrâneo e o Báltico quase não têm maré?</b> São mares quase fechados, ligados ao oceano por estreitos (Gibraltar, Øresund). A onda de maré do Atlântico mal consegue entrar, e eles são pequenos demais para gerar a própria maré.</p>
+<p><b>O Maranhão e o Amapá</b> têm plataforma continental larga e rasa e baías em funil, como a Baía de São Marcos. Isso amplifica a maré até cerca de 7 metros em São Luís, a maior entre as capitais brasileiras.</p>
+<p><b>Pontos anfidrômicos</b> são lugares no oceano onde a amplitude é praticamente zero, e a onda de maré gira em volta deles. Há vários no Mar do Norte e no Pacífico; costas próximas a eles têm marés pequenas.</p>
+</div>
+<p class="note">Valores arredondados a partir de tábuas de maré oficiais (Serviço Hidrográfico do Canadá, NOAA, SHOM, UKHO e Marinha do Brasil/DHN). Variam com o ponto exato da costa, a época do ano e o vento.</p>
+</div>
+</section>
+
+<footer class="band alt"><div class="wrap">O modelo acima é a "maré de equilíbrio" de Newton, sobre uma Terra coberta de água. Nas costas reais, continentes, profundidade e ressonância mudam o horário e o tamanho da maré, como mostram as cidades acima. Consulte as tábuas de maré da <a href="https://www.marinha.mil.br/chm/tabuas-de-mare">Marinha do Brasil</a> para o seu porto.</div></footer>
+
+<script>
+{
+const SYN=29.53, MS=0.46;
+const big=[
+["Baía de Fundy (Burntcoat Head)","Nova Escócia, Canadá",16],
+["Baía de Ungava (Leaf Basin)","Quebec, Canadá",15.5],
+["Canal de Bristol (estuário do Severn)","Inglaterra / País de Gales",14],
+["Granville e Saint-Malo","Baía do Monte Saint-Michel, França",13],
+["Río Gallegos","Patagônia, Argentina",10],
+["Anchorage (Cook Inlet)","Alasca, EUA",9],
+["Incheon","Coreia do Sul",9],
+["São Luís","Maranhão, Brasil",7]];
+const small=[
+["Estocolmo","Mar Báltico, Suécia",0.05],
+["Odessa","Mar Negro, Ucrânia",0.1],
+["Marselha","Mar Mediterrâneo, França",0.3],
+["Kingston","Mar do Caribe, Jamaica",0.3],
+["Pensacola","Golfo do México, EUA",0.4]];
+const brasil=[
+["São Luís","Maranhão",7],
+["Belém","Pará",3.5],
+["Fortaleza","Ceará",3],
+["Salvador","Bahia",2.5],
+["Rio de Janeiro","Rio de Janeiro",1.3],
+["Rio Grande","Rio Grande do Sul",0.5]];
+const MAX=17;
+const fmt=v=>v<0.1?"&lt; 0,1 m":(v<1?v.toFixed(1):(v%1?v.toFixed(1):v.toFixed(0))).toString().replace(".",",")+(v<0.1?"":" m");
+const bars=(a,br)=>a.map(([n,s,v])=>`<div class="bar${br?" br":""}"><div class="n">${n}<small>${s}</small></div><div class="v">${v>=16?"até ":""}${fmt(v)}</div><div class="t"><i style="width:${Math.max(0.6,v/MAX*100)}%"></i></div></div>`).join("");
+document.getElementById("big").innerHTML=bars(big);
+document.getElementById("small").innerHTML=bars(small);
+document.getElementById("brasil").innerHTML=bars(brasil,1);
+
+const $=id=>document.getElementById(id);
+const st={T:9,play:false,speed:6,sun:true,f:1};
+const thM=T=>Math.PI+2*Math.PI*T/(SYN*24);
+const phiObs=T=>Math.PI+2*Math.PI*(((T%24)+24)%24-12)/24;
+const tideAt=(phi,T)=>st.f*Math.cos(2*(phi-thM(T)))+(st.sun?MS:0)*Math.cos(2*(phi-Math.PI));
+const hObs=T=>tideAt(phiObs(T),T);
+const rangeAt=T=>{const s=st.sun?MS:0,d=thM(T)-Math.PI;return 2*Math.sqrt(st.f**2+s*s+2*st.f*s*Math.cos(2*d));};
+const RMAX=()=>2*(1.18+MS);
+const phaseName=d=>{const x=((d%SYN)+SYN)%SYN/SYN;if(x<.03||x>.97)return"Lua nova";if(x<.22)return"Crescente";if(x<.28)return"Quarto crescente";if(x<.47)return"Gibosa crescente";if(x<.53)return"Lua cheia";if(x<.72)return"Gibosa minguante";if(x<.78)return"Quarto minguante";return"Minguante";};
+
+const cv=$("cv"),scene=$("scene");let ctx=cv.getContext("2d"),W=0,H=0;
+const stars=[];{let s=7;for(let i=0;i<120;i++){s=s*16807%2147483647;const a=s/2147483647;s=s*16807%2147483647;const b=s/2147483647;s=s*16807%2147483647;stars.push([a,b,(s/2147483647)*1.3+.3]);}}
+const size=()=>{const dpr=Math.min(2,window.devicePixelRatio||1);W=scene.clientWidth;H=scene.clientHeight;cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);};
+const roS=new ResizeObserver(()=>{size();draw();});roS.observe(scene);
+
+function drawScene(){
+ const c=ctx,T=st.T,cx=W*0.56,cy=H/2,m=Math.min(W*0.8,H);
+ c.clearRect(0,0,W,H);
+ for(const[a,b,r]of stars){c.fillStyle="rgba(255,255,255,.5)";c.beginPath();c.arc(a*W,b*H,r,0,7);c.fill();}
+ const g=c.createLinearGradient(0,0,W*0.35,0);g.addColorStop(0,"rgba(255,201,77,.35)");g.addColorStop(1,"rgba(255,201,77,0)");c.fillStyle=g;c.fillRect(0,0,W*0.35,H);
+ c.fillStyle="#ffc94d";c.font="600 14px Inter,sans-serif";c.textAlign="left";c.fillText("☀ Luz do Sol",14,24);
+ c.strokeStyle="rgba(255,201,77,.35)";c.lineWidth=1.5;for(let i=1;i<6;i++){const y=H*i/6;c.beginPath();c.moveTo(14,y);c.lineTo(W*0.22,y);c.stroke();c.beginPath();c.moveTo(W*0.22,y);c.lineTo(W*0.22-7,y-4);c.lineTo(W*0.22-7,y+4);c.fillStyle="rgba(255,201,77,.5)";c.fill();}
+ const Ro=m*0.40, Re=m*0.13;
+ c.strokeStyle="rgba(169,188,205,.3)";c.setLineDash([3,6]);c.beginPath();c.arc(cx,cy,Ro,0,7);c.stroke();c.setLineDash([]);
+ const th=thM(T),mx=cx+Ro*Math.cos(th),my=cy-Ro*Math.sin(th);
+ c.strokeStyle="rgba(233,237,242,.25)";c.beginPath();c.moveTo(cx,cy);c.lineTo(mx,my);c.stroke();
+ // ocean
+ const amp=Re*0.13;c.beginPath();
+ for(let i=0;i<=180;i++){const p=i/180*2*Math.PI,r=Re*1.1+amp*tideAt(p,T);const x=cx+r*Math.cos(p),y=cy-r*Math.sin(p);i?c.lineTo(x,y):c.moveTo(x,y);}
+ const og=c.createRadialGradient(cx-Re*.4,cy,Re*.4,cx,cy,Re*1.5);og.addColorStop(0,"#5fb4f5");og.addColorStop(1,"#1d66a8");c.fillStyle=og;c.fill();
+ // earth
+ const eg=c.createRadialGradient(cx-Re*.5,cy-Re*.2,Re*.1,cx,cy,Re);eg.addColorStop(0,"#4f9a63");eg.addColorStop(1,"#1f5a39");c.fillStyle=eg;c.beginPath();c.arc(cx,cy,Re,0,7);c.fill();
+ // night side
+ c.save();c.beginPath();c.rect(cx,cy-Re*2,Re*2,Re*4);c.clip();c.fillStyle="rgba(3,10,20,.55)";c.beginPath();
+ for(let i=0;i<=180;i++){const p=i/180*2*Math.PI,r=Re*1.1+amp*tideAt(p,T)+1;const x=cx+r*Math.cos(p),y=cy-r*Math.sin(p);i?c.lineTo(x,y):c.moveTo(x,y);}c.fill();c.restore();
+ c.fillStyle="#cfe3f2";c.beginPath();c.arc(cx,cy,3,0,7);c.fill();
+ // force arrows
+ const ar=(r1,r2)=>{const x1=cx+r1*Math.cos(th),y1=cy-r1*Math.sin(th),x2=cx+r2*Math.cos(th),y2=cy-r2*Math.sin(th);c.strokeStyle="#ffffff";c.lineWidth=2.5;c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();const a=Math.atan2(y2-y1,x2-x1);c.fillStyle="#fff";c.beginPath();c.moveTo(x2,y2);c.lineTo(x2-9*Math.cos(a-.5),y2-9*Math.sin(a-.5));c.lineTo(x2-9*Math.cos(a+.5),y2-9*Math.sin(a+.5));c.fill();};
+ ar(Re*1.35,Re*1.7);ar(-Re*1.35,-Re*1.7);
+ // observer
+ const po=phiObs(T),ro=Re*1.1+amp*tideAt(po,T),ox=cx+ro*Math.cos(po),oy=cy-ro*Math.sin(po);
+ c.strokeStyle="rgba(255,201,77,.7)";c.lineWidth=1.5;c.beginPath();c.moveTo(cx,cy);c.lineTo(ox,oy);c.stroke();
+ c.fillStyle="#ffc94d";c.strokeStyle="#071a2b";c.lineWidth=2;c.beginPath();c.arc(ox,oy,6,0,7);c.fill();c.stroke();
+ const lx=cx+(ro+22)*Math.cos(po),ly=cy-(ro+22)*Math.sin(po);
+ c.font="600 14px Inter,sans-serif";c.textAlign="center";c.textBaseline="middle";c.lineWidth=4;c.strokeStyle="#071a2b";c.strokeText("Você",lx,ly);c.fillStyle="#ffc94d";c.fillText("Você",lx,ly);
+ // moon
+ const Rm=Math.max(10,m*0.04);c.fillStyle="#3a4350";c.beginPath();c.arc(mx,my,Rm,0,7);c.fill();
+ c.fillStyle="#e9edf2";c.beginPath();c.arc(mx,my,Rm,Math.PI/2,Math.PI*1.5);c.fill();
+ c.strokeStyle="rgba(233,237,242,.5)";c.lineWidth=1;c.beginPath();c.arc(mx,my,Rm,0,7);c.stroke();
+ const tlx=mx+(Rm+18)*Math.cos(th),tly=my-(Rm+18)*Math.sin(th);
+ c.textAlign=Math.cos(th)>.3?"left":Math.cos(th)<-.3?"right":"center";c.strokeText("Lua",tlx,tly);c.fillStyle="#e9edf2";c.fillText("Lua",tlx,tly);
+ c.textAlign="right";c.textBaseline="alphabetic";c.font="13px Inter,sans-serif";c.fillStyle="#a9bccd";c.fillText("Vista do Polo Norte · fora de escala",W-12,H-12);
+}
+
+const tc=$("tc");
+function drawCurve(){
+ const W2=tc.clientWidth,H2=tc.clientHeight;if(!W2)return;
+ const L=10,R=10,Tp=14,B=26,span=72,t0=st.T-24,lim=1.18+MS;
+ const X=t=>L+(t-t0)/span*(W2-L-R),Y=h=>Tp+(1-(h+lim)/(2*lim))*(H2-Tp-B);
+ let d="";for(let i=0;i<=360;i++){const t=t0+span*i/360;d+=(i?"L":"M")+X(t).toFixed(1)+" "+Y(hObs(t)).toFixed(1);}
+ let ticks="";const step=W2<520?24:12;for(let k=Math.ceil(t0/step)*step;k<=t0+span;k+=step){const x=X(k),dd=Math.floor(k/24),hh=((k%24)+24)%24;ticks+=`<line x1="${x}" x2="${x}" y1="${Tp}" y2="${H2-B}" stroke="#1f4466"/><text x="${x}" y="${H2-8}" text-anchor="middle">dia ${dd} ${String(hh).padStart(2,"0")}h</text>`;}
+ const xn=X(st.T),yn=Y(hObs(st.T));
+ tc.innerHTML=`<line x1="${L}" x2="${W2-R}" y1="${Y(0)}" y2="${Y(0)}" stroke="#2a5a85" stroke-dasharray="4 4"/>${ticks}<path d="${d} L${X(t0+span)} ${H2-B} L${L} ${H2-B}Z" fill="rgba(47,143,216,.25)"/><path d="${d}" fill="none" stroke="#7cc4ff" stroke-width="2.5"/><line x1="${xn}" x2="${xn}" y1="${Tp}" y2="${H2-B}" stroke="#ffc94d" stroke-width="2"/><circle cx="${xn}" cy="${yn}" r="6" fill="#ffc94d" stroke="#0c2740" stroke-width="2"/><text x="${L+4}" y="${Y(0)-6}">nível médio</text>`;
+}
+const roC=new ResizeObserver(drawCurve);roC.observe(tc);
+
+const mo=$("month");
+function drawMonth(){
+ const cur=Math.floor(((st.T/24)%SYN+SYN)%SYN);let h="";
+ for(let i=0;i<30;i++){const r=rangeAt(i*24+12)/RMAX();h+=`<i class="${i===cur?"on":""}" style="height:${(r*100).toFixed(1)}%" title="Dia ${i}"></i>`;}
+ mo.innerHTML=h;
+}
+
+function readouts(){
+ const T=st.T,d=T/24,dd=((d%SYN)+SYN)%SYN;
+ $("phase").textContent=phaseName(dd);
+ const c2=Math.cos(2*(thM(T)-Math.PI));
+ const k=$("kind");
+ if(!st.sun){k.firstChild.textContent="Só a Lua";k.lastChild.textContent="Sem o Sol, a amplitude é igual todos os dias. Ligue o Sol para ver marés vivas e mortas.";}
+ else if(c2>0.6){k.firstChild.textContent="Maré viva (sizígia)";k.lastChild.textContent="Sol, Terra e Lua alinhados: os bojos se somam e a maré sobe e desce mais.";}
+ else if(c2<-0.6){k.firstChild.textContent="Maré morta (quadratura)";k.lastChild.textContent="Sol e Lua a 90°: os bojos se cruzam e a diferença entre alta e baixa é a menor do mês.";}
+ else{k.firstChild.textContent="Maré intermediária";k.lastChild.textContent=c2>0?"Indo ou vindo de uma maré viva.":"Indo ou vindo de uma maré morta.";}
+ const dh=hObs(T+0.05)-hObs(T-0.05);$("now").textContent=dh>0?"Enchendo ↑":"Vazando ↓";
+ let tn=T,prev=hObs(T),up=dh>0;for(let i=1;i<=300;i++){const t=T+i*0.05,h=hObs(t);if(up&&h<prev){tn=t-0.05;break;}up=h>prev;prev=h;}
+ const m=Math.round((tn-T)*60);$("next").textContent=`em ${Math.floor(m/60)} h ${String(m%60).padStart(2,"0")} min`;
+ $("amp").textContent=Math.round(rangeAt(T)/RMAX()*100)+"% do máximo";
+ $("dayo").textContent=dd.toFixed(1).replace(".",",")+" de 29,5";
+ const hh=((T%24)+24)%24;$("houro").textContent=String(Math.floor(hh)).padStart(2,"0")+":"+String(Math.round(hh%1*60)).padStart(2,"0");
+ $("day").value=Math.floor(dd);$("hour").value=Math.floor(hh*4)/4;
+}
+
+function draw(){drawScene();drawCurve();drawMonth();readouts();}
+$("day").addEventListener("input",e=>{const h=((st.T%24)+24)%24;st.T=+e.target.value*24+h;draw();});
+$("hour").addEventListener("input",e=>{st.T=Math.floor(st.T/24)*24+ +e.target.value;draw();});
+$("presets").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;st.T=+b.dataset.d*24;draw();});
+$("sun").addEventListener("change",e=>{st.sun=e.target.checked;draw();});
+$("dist").addEventListener("change",e=>{st.f=+e.target.value;draw();});
+$("speed").addEventListener("change",e=>{st.speed=+e.target.value;});
+let last=0;const loop=ts=>{if(!st.play)return;if(last)st.T+=(ts-last)/1000*st.speed;last=ts;if(st.T>=SYN*24)st.T-=SYN*24;draw();requestAnimationFrame(loop);};
+$("play").addEventListener("click",e=>{st.play=!st.play;e.currentTarget.setAttribute("aria-pressed",st.play);e.currentTarget.textContent=st.play?"❚❚ Pausar":"▶ Animar";if(st.play){last=0;requestAnimationFrame(loop);}});
+size();draw();
+}
+</script>
+</body>
+</html>
