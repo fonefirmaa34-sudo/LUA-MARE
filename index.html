@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Lua e Marés</title>
+<title>Laboratório do Prof. Lukosiunas</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
 <style>
@@ -70,6 +70,9 @@ svg text{font:13px Inter,sans-serif;fill:var(--mut);paint-order:stroke;stroke:va
 .bar.br .t i{background:linear-gradient(90deg,#f2a93b,var(--sun))}
 .note{color:var(--mut);font-size:14px;margin-top:16px}
 .why{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 28px;margin-top:14px}
+.lab-head{display:flex;align-items:center;gap:14px;padding:14px max(5vw,16px);background:#0a2236;border-bottom:1px solid var(--line)}
+.lab-head svg{width:64px;height:64px;flex:none}
+.lab-head b{font-family:Sora,Inter,sans-serif;font-weight:700;font-size:clamp(18px,3vw,26px);letter-spacing:.01em;line-height:1.1}
 footer{color:var(--mut);font-size:14px}
 footer a{color:var(--sea2)}
 @media(max-width:860px){.lab{grid-template-columns:minmax(0,1fr)}.steps{grid-template-columns:minmax(0,1fr)}.fig{min-height:360px}}
@@ -78,6 +81,20 @@ footer a{color:var(--sea2)}
 </style>
 </head>
 <body>
+<header class="lab-head"><svg viewBox="0 0 64 64" role="img" aria-label="Prof. Lukosiunas">
+<circle cx="32" cy="32" r="31" fill="#123552"/>
+<ellipse cx="13" cy="33" rx="4" ry="6" fill="#f1c4a0"/><ellipse cx="51" cy="33" rx="4" ry="6" fill="#f1c4a0"/>
+<ellipse cx="32" cy="32" rx="18" ry="20" fill="#f6d2b3"/>
+<path d="M13 30c-2-14 8-22 19-22s21 8 19 22c-3-6-8-10-13-11-5 3-12 4-19 3-3 2-5 5-6 8z" fill="#d9531e"/>
+<path d="M14 34c1 14 8 24 18 24s17-10 18-24c-3 5-6 8-9 8-3-3-6-4-9-4s-6 1-9 4c-3 0-6-3-9-8z" fill="#c8461a"/>
+<path d="M26 45q6-3 12 0" stroke="#8f2f0f" stroke-width="2" fill="none" stroke-linecap="round"/>
+<circle cx="25" cy="32" r="5.5" fill="#dff0ff" fill-opacity=".5" stroke="#1b1b1b" stroke-width="2"/>
+<circle cx="39" cy="32" r="5.5" fill="#dff0ff" fill-opacity=".5" stroke="#1b1b1b" stroke-width="2"/>
+<path d="M30.5 32h3M19.5 31l-5-2M44.5 31l5-2" stroke="#1b1b1b" stroke-width="2"/>
+<circle cx="25" cy="32.5" r="1.6" fill="#1b1b1b"/><circle cx="39" cy="32.5" r="1.6" fill="#1b1b1b"/>
+<path d="M21 25q4-2 8 0M35 25q4-2 8 0" stroke="#a63a14" stroke-width="2" fill="none" stroke-linecap="round"/>
+<path d="M32 34q-2 5 1 6" stroke="#d9a785" stroke-width="1.6" fill="none"/>
+</svg><b>LABORATÓRIO DO PROF. LUKOSIUNAS</b></header>
 <section class="band">
 <div class="wrap">
 <div class="top">
